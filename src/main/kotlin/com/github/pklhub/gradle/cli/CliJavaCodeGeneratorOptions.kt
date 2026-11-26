@@ -65,6 +65,8 @@ data class CliJavaCodeGeneratorOptions(
     val durationClassConverter: String? = null,
 
     val dataSizeConverter: String? = null,
+
+    val generateRecords: Boolean = false,
 ) {
     @Suppress("DeprecatedCallableAddReplaceWith")
     @Deprecated("deprecated without replacement")
@@ -93,5 +95,6 @@ data class CliJavaCodeGeneratorOptions(
             base,
             durationClassConverter,
             dataSizeConverter,
+            generateRecords,
         )
 }

@@ -13,6 +13,9 @@ import javax.inject.Inject
 abstract class JavaCodeGenSpec
 @Inject constructor(name: String, project: Project, objects: ObjectFactory) :
     CodeGenSpec(name, project, objects) {
+    val generateRecords: Property<Boolean> =
+        objects.property(Boolean::class.java).convention(false)
+
     val generateGetters: Property<Boolean> =
         objects.property(Boolean::class.java).convention(false)
 

@@ -12,7 +12,6 @@ import org.pkl.core.PObject
 import org.pkl.core.PType
 import org.pkl.core.TypeAlias
 import org.pkl.core.util.CodeGeneratorUtils
-import java.util.Locale
 
 class JavaValueGenerator(
     private val options: JavaCodeGeneratorOptions,
@@ -21,20 +20,15 @@ class JavaValueGenerator(
 
     fun generate(value: Any, type: PType): CodeBlock {
         return when (value) {
-            is PNull -> return CodeBlock.of("null")
-            is String -> when (type) {
-                is PType.Alias -> {
-                    if (CodeGeneratorUtils.isRepresentableAsEnum(type, null)) {
-                        val className = type.typeAlias.toJavaPoetName()
-                        val builder = CodeBlock.builder()
-                        builder.add(className.canonicalName())
-                        builder.add("." + value.toString().uppercase(Locale.getDefault()))
-                        return builder.build()
-                    }
-                    return CodeBlock.of("\"${value}\"")
-                }
-                is PType.StringLiteral -> CodeBlock.of("\"${value}\"")
-                else -> CodeBlock.of("\"${value}\"")
+            is PNull -> CodeBlock.of("null")
+            is String -> if (type is PType.Alias && CodeGeneratorUtils.isRepresentableAsEnum(type, null)) {
+                CodeBlock.of(
+                    "\$T.\$L",
+                    type.typeAlias.toJavaPoetName(),
+                    CodeGeneratorUtils.toEnumConstantName(value),
+                )
+            } else {
+                CodeBlock.of("\$S", value)
             }
             is Boolean -> CodeBlock.of("$value")
             is Int -> CodeBlock.of("$value")
@@ -46,7 +40,7 @@ class JavaValueGenerator(
             is Duration -> generateDuration(value)
             is DataSize -> generateDataSize(value)
             is PObject -> generateObject(value, type as PType.Class)
-            else -> return CodeBlock.of("null")
+            else -> CodeBlock.of("null")
         }
     }
 

@@ -81,6 +81,9 @@ class JavaCodeGenerator(
         private val PATTERN = ClassName.get(Pattern::class.java)
         private val URI = ClassName.get(java.net.URI::class.java)
         private val VERSION = ClassName.get(Version::class.java)
+        private val recordReservedNames = setOf(
+            "clone", "finalize", "getClass", "hashCode", "notify", "notifyAll", "toString", "wait",
+        )
 
         private fun toClassName(fqn: String): ClassName {
             val index = fqn.lastIndexOf(".")
@@ -139,6 +142,10 @@ class JavaCodeGenerator(
                 )
             }
 
+            if (codegenOptions.generateRecords && codegenOptions.generateSetters) {
+                throw JavaCodeGeneratorException("generateRecords cannot be combined with generateSetters.")
+            }
+
             val pModuleClass = schema.moduleClass
             val moduleClass = generateTypeSpec(pModuleClass, schema)
 
@@ -183,17 +190,20 @@ class JavaCodeGenerator(
         val superProperties =
             superclass?.let { renameIfReservedWord(it.allProperties) }?.filterValues { !it.isHidden }
                 ?: mapOf()
-        val properties = renameIfReservedWord(pClass.properties).filterValues { !it.isHidden }
+        val isRecord = codegenOptions.generateRecords && superclass == null && !pClass.isOpen && !pClass.isAbstract &&
+            (!isModuleClass || pClass.properties.values.any { !it.isHidden })
+        val additionalReservedNames = when {
+            !isRecord -> emptySet()
+            codegenOptions.implementSerializable -> recordReservedNames + "serialVersionUID"
+            else -> recordReservedNames
+        }
+        val properties = renameIfReservedWord(pClass.properties, additionalReservedNames).filterValues { !it.isHidden }
         val allProperties = superProperties + properties
 
         fun PClass.Property.isRegex(): Boolean =
             (this.type as? PType.Class)?.pClass?.info == PClassInfo.Regex
 
-        fun addCtorParameter(
-            builder: MethodSpec.Builder,
-            propJavaName: String,
-            property: PClass.Property,
-        ) {
+        fun constructorParameter(propJavaName: String, property: PClass.Property): ParameterSpec.Builder {
             val paramBuilder = ParameterSpec.builder(property.type.toJavaPoetName(), propJavaName)
             if (namedAnnotationName != null) {
                 paramBuilder.addAnnotation(
@@ -202,7 +212,7 @@ class JavaCodeGenerator(
                         .build(),
                 )
             }
-            builder.addParameter(paramBuilder.build())
+            return paramBuilder
         }
 
         fun generateConstructor(isInstantiable: Boolean): MethodSpec {
@@ -220,7 +230,7 @@ class JavaCodeGenerator(
             if (superProperties.isNotEmpty()) {
                 for ((name, property) in superProperties) {
                     if (properties.containsKey(name)) continue
-                    addCtorParameter(builder, name, property)
+                    builder.addParameter(constructorParameter(name, property).build())
                 }
                 // $W inserts space or newline (automatic line wrapping)
                 val callArgsStr = superProperties.keys.joinToString(",\$W")
@@ -230,14 +240,17 @@ class JavaCodeGenerator(
             }
 
             for ((name, property) in properties) {
-                addCtorParameter(builder, name, property)
+                builder.addParameter(constructorParameter(name, property).build())
                 builder.addStatement("this.\$N = \$N", name, name)
             }
 
             return builder.build()
         }
 
-        fun generateEmptyConstructor(isInstantiable: Boolean): MethodSpec {
+        fun generateEmptyConstructor(
+            isInstantiable: Boolean,
+            defaultValues: Map<String, Any>?,
+        ): MethodSpec {
             val builder = MethodSpec.constructorBuilder()
                 // choose most restrictive access modifier possible
                 .addModifiers(
@@ -247,6 +260,26 @@ class JavaCodeGenerator(
                         else -> Modifier.PRIVATE
                     },
                 )
+
+            if (codegenOptions.generateRecords && allProperties.isNotEmpty()) {
+                val constructorProperties = superProperties.filterKeys { it !in properties } + properties
+                val arguments = constructorProperties.values.map { property ->
+                    val type = property.type.toJavaPoetName()
+                    val defaultValue = defaultValues?.get(property.simpleName)?.takeUnless { it is PNull }
+                    val value = when {
+                        type == TypeName.LONG && defaultValue is Long -> CodeBlock.of("\$LL", defaultValue)
+                        defaultValue != null -> defaultValueGenerator.generate(defaultValue, property.type)
+                        type == TypeName.BOOLEAN -> CodeBlock.of("false")
+                        type.isPrimitive -> CodeBlock.of("0")
+                        else -> CodeBlock.of("null")
+                    }
+                    when (type) {
+                        TypeName.BYTE, TypeName.SHORT -> CodeBlock.of("(\$T) (\$L)", type, value)
+                        else -> value
+                    }
+                }
+                builder.addStatement("this(\$L)", CodeBlock.join(arguments, ", "))
+            }
 
             return builder.build()
         }
@@ -400,6 +433,13 @@ class JavaCodeGenerator(
             return builder.build()
         }
 
+        fun getterName(property: PClass.Property): String {
+            val propertyType = property.type
+            val isBooleanProperty =
+                propertyType is PType.Class && propertyType.pClass.info == PClassInfo.Boolean
+            return (if (isBooleanProperty) "is" else "get") + property.simpleName.replaceFirstChar { it.titlecaseChar() }
+        }
+
         @Suppress("DuplicatedCode")
         fun generateGetter(
             propertyName: String,
@@ -407,16 +447,8 @@ class JavaCodeGenerator(
             isOverridden: Boolean,
         ): MethodSpec {
             val propertyType = property.type
-            val isBooleanProperty =
-                propertyType is PType.Class && propertyType.pClass.info == PClassInfo.Boolean
-            val methodName =
-                (if (isBooleanProperty) "is" else "get") +
-                    // can use original name here (property.name rather than propertyName)
-                    // because getter name cannot possibly conflict with reserved words
-                    property.simpleName.replaceFirstChar { it.titlecaseChar() }
-
             val builder =
-                MethodSpec.methodBuilder(methodName)
+                MethodSpec.methodBuilder(getterName(property))
                     .addModifiers(Modifier.PUBLIC)
                     .returns(propertyType.toJavaPoetName())
                     .addStatement("return \$N", propertyName)
@@ -547,22 +579,53 @@ class JavaCodeGenerator(
             }
         }
 
+        fun addRecordMembers(builder: TypeSpec.Builder) {
+            val header = MethodSpec.constructorBuilder()
+            for ((name, property) in properties) {
+                val component = constructorParameter(name, property)
+                if (codegenOptions.generateJavadoc) {
+                    property.docComment?.takeIf { it.isNotEmpty() }?.let {
+                        component.addJavadoc(CodeBlock.of("\$L", renderAsJavadoc(it)))
+                    }
+                }
+                if (property.annotations.any { it.classInfo == PClassInfo.Deprecated }) {
+                    component.addAnnotation(Deprecated::class.java)
+                }
+                header.addParameter(component.build())
+                if (codegenOptions.generateGetters) {
+                    val getterName = getterName(property)
+                    if (getterName in properties || getterName in recordReservedNames) {
+                        throw JavaCodeGeneratorException(
+                            "Cannot generate getter `$getterName` for record `${pClass.displayName}` because the name is in use.",
+                        )
+                    }
+                    builder.addMethod(generateGetter(name, property, isOverridden = false))
+                }
+                builder.addMethod(generateWithMethod(name, property))
+            }
+            builder.recordConstructor(header.build())
+        }
+
         @Suppress("DuplicatedCode")
         fun generateClass(): TypeSpec.Builder {
             val defaultValues: Map<String, Any>? =
-                if (codegenOptions.setDefaultValues) {
+                if (codegenOptions.setDefaultValues && (!codegenOptions.generateRecords || codegenOptions.generateEmptyConstructor)) {
                     defaultValueReader.findDefaultValues(
                         codegenOptions.baseCliBaseOptions,
                         moduleSource,
                         pClass,
                         isModuleClass,
+                        includeInherited = codegenOptions.generateRecords,
                     )
                 } else {
                     null
                 }
 
-            val builder =
-                TypeSpec.classBuilder(javaPoetClassName.simpleName()).addModifiers(Modifier.PUBLIC)
+            val builder = if (isRecord) {
+                TypeSpec.recordBuilder(javaPoetClassName.simpleName())
+            } else {
+                TypeSpec.classBuilder(javaPoetClassName.simpleName())
+            }.addModifiers(Modifier.PUBLIC)
 
             // stateless final module classes are non-instantiable by choice
             val isInstantiable =
@@ -592,7 +655,7 @@ class JavaCodeGenerator(
 
             if (pClass.isAbstract) {
                 builder.addModifiers(Modifier.ABSTRACT)
-            } else if (!pClass.isOpen) {
+            } else if (!pClass.isOpen && !isRecord) {
                 builder.addModifiers(Modifier.FINAL)
             }
 
@@ -600,12 +663,20 @@ class JavaCodeGenerator(
                 generateSpringBootAnnotations(builder)
             }
 
-            if (properties.isNotEmpty()) {
+            if (isRecord) {
+                addRecordMembers(builder)
+                if (codegenOptions.generateEmptyConstructor && properties.isNotEmpty()) {
+                    builder.addMethod(generateEmptyConstructor(isInstantiable, defaultValues))
+                }
+                return builder
+            }
+
+            if (properties.isNotEmpty() || (codegenOptions.generateRecords && superProperties.isNotEmpty())) {
                 builder.addMethod(generateConstructor(isInstantiable))
             }
 
             if (codegenOptions.generateEmptyConstructor) {
-                builder.addMethod(generateEmptyConstructor(isInstantiable))
+                builder.addMethod(generateEmptyConstructor(isInstantiable, defaultValues))
             }
 
             superclass?.let { builder.superclass(it.toJavaPoetName()) }
@@ -616,7 +687,8 @@ class JavaCodeGenerator(
             // self type
             for ((name, property) in allProperties) {
                 if (name in properties) {
-                    builder.addField(generateField(name, property, defaultValues))
+                    val fieldDefaults = if (codegenOptions.generateRecords) null else defaultValues
+                    builder.addField(generateField(name, property, fieldDefaults))
                     if (codegenOptions.generateGetters) {
                         val isOverridden = name in superProperties
                         builder.addMethod(generateGetter(name, property, isOverridden))
@@ -925,9 +997,12 @@ class JavaCodeGenerator(
 
     private fun TypeName.boxIf(shouldBox: Boolean): TypeName = if (shouldBox) box() else this
 
-    private fun <T> renameIfReservedWord(map: Map<String, T>): Map<String, T> {
+    private fun <T> renameIfReservedWord(
+        map: Map<String, T>,
+        additionalReservedNames: Set<String> = emptySet(),
+    ): Map<String, T> {
         return map.mapKeys { (key, _) ->
-            if (key in javaReservedWords) {
+            if (key in javaReservedWords || key in additionalReservedNames) {
                 generateSequence("_$key") { "_$it" }.first { it !in map.keys }
             } else {
                 key

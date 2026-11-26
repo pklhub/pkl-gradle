@@ -38,6 +38,7 @@ class JavaCodeGenTask(
                 spec.setDefaultValues.get(),
                 spec.durationClassConverter.orNull,
                 spec.dataSizeConverter.orNull,
+                spec.generateRecords.get(),
             ),
             project.logger,
         )

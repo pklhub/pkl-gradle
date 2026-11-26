@@ -14,8 +14,9 @@ class DefaultValueReader(private val logger: Logger) {
         moduleSource: ModuleSource,
         pClass: PClass,
         isModuleClass: Boolean,
+        includeInherited: Boolean = false,
     ): Map<String, Any>? {
-        val runner = Runner(options, moduleSource, pClass, isModuleClass, logger)
+        val runner = Runner(options, moduleSource, pClass, isModuleClass, logger, includeInherited)
         runner.run()
         return runner.properties
     }
@@ -26,11 +27,13 @@ class DefaultValueReader(private val logger: Logger) {
         private val pClass: PClass,
         private val isModuleClass: Boolean,
         private val logger: Logger,
+        private val includeInherited: Boolean = false,
     ) : CliCommand(options) {
 
         var properties: Map<String, Any>? = null
 
         override fun doRun() {
+            val propertyMember = if (includeInherited) "allProperties" else "properties"
             val builder = evaluatorBuilder()
             try {
                 builder.build().use { evaluator ->
@@ -41,13 +44,13 @@ class DefaultValueReader(private val logger: Logger) {
                                 String.format(
                                     """
                                 import("pkl:reflect").Class(module.getClass())
-                                    .properties.map((k,v) -> Pair(k, v.defaultValue))
+                                    .$propertyMember.map((k,v) -> Pair(k, v.defaultValue))
                                     """.trimIndent(),
                                 )
                             } else {
                                 String.format(
                                     """
-                                import("pkl:reflect").Class(%s).properties.map((k,v) -> Pair(k, v.defaultValue))
+                                import("pkl:reflect").Class(%s).$propertyMember.map((k,v) -> Pair(k, v.defaultValue))
                                     """.trimIndent(),
                                     pClass.simpleName,
                                 )

@@ -5,6 +5,7 @@ import org.gradle.api.DefaultTask
 import org.gradle.api.file.Directory
 import org.gradle.api.model.ObjectFactory
 import org.gradle.api.provider.ProviderFactory
+import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.InputFiles
 import org.gradle.api.tasks.OutputDirectories
 import org.gradle.api.tasks.SourceSet
@@ -32,6 +33,10 @@ open class GeneratorTask @Inject constructor(
             spec.outputDir.get().dir("kotlin")
         }.distinct()
     }
+
+    @Input
+    open fun getJavaRecordModes(): Map<String, Boolean> =
+        extension.javaCodeGenerators.associate { it.name to it.generateRecords.get() }
 
     @InputFiles
     open fun getInputFiles(): List<File> {

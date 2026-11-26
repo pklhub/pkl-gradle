@@ -57,4 +57,6 @@ data class JavaCodeGeneratorOptions(
     val durationClassConverter: String?,
 
     val dataSizeConverter: String?,
+
+    val generateRecords: Boolean = false,
 )

@@ -61,6 +61,25 @@ pklhub {
 }
 ```
 
+### Java records
+
+Set `generateRecords = true` for a Java generator.
+
+```groovy
+pklhub {
+    javaCodeGenerators {
+        configClasses {
+            sourceModules = ["mod.pkl"]
+            generateRecords = true
+        }
+    }
+}
+```
+
+Records require Java 16 or newer. Final Pkl classes and modules with properties can generate records when they have no custom superclass. Open and abstract types and types with a custom superclass continue to generate classes. Enum generation is unchanged.
+
+Records have component accessors such as `port()`. Set `generateGetters = true` to also generate JavaBean getters. Leave `generateSetters` disabled. To add a no-argument constructor, set `generateEmptyConstructor = true`. With `setDefaultValues = true`, that constructor uses Pkl defaults where available and Java defaults for the remaining components.
+
 ### Configuration Options
 
 - **`sourceModules`:** List of PKL files to generate Java code from.

@@ -2,6 +2,7 @@ package com.github.pklhub.gradle
 
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
+import java.net.URLClassLoader
 import kotlin.io.path.listDirectoryEntries
 import kotlin.io.path.readText
 
@@ -85,7 +86,64 @@ class JavaCodeGeneratorsTest : AbstractTest() {
         assertThat(addressClassFile).exists()
     }
 
-    private fun writeBuildFile() {
+    @Test
+    fun `compile generated records with defaults and class fallback`() {
+        writeBuildFile(generateRecords = true)
+        writeProjectFile()
+        writeFile(
+            "mod.pkl",
+            """
+            module org.mod
+
+            enabled: Boolean = true
+
+            class Server {
+              /// The host to bind.
+              host: String = "localhost"
+              port: Int32 = 8080
+              retries: Int8
+              capacity: Int = 5000000000
+              toString: String = "label \"quoted\""
+              mode: Mode = "dev-mode"
+            }
+
+            open class Base { name: String = "base" }
+            class Child extends Base {}
+            typealias Mode = "dev-mode" | "prod"
+            """,
+        )
+
+        runTask("compileJava")
+
+        val classes = testProjectDir.resolve("build/classes/java/main")
+        URLClassLoader(arrayOf(classes.toUri().toURL())).use { loader ->
+            val module = loader.loadClass("foo.bar.Mod")
+            val server = loader.loadClass("foo.bar.Mod\$Server")
+            assertThat(module.isRecord).isTrue()
+            assertThat(server.isRecord).isTrue()
+            assertThat(server.recordComponents.map { it.name })
+                .containsExactly("host", "port", "retries", "capacity", "_toString", "mode")
+            val instance = server.getConstructor().newInstance()
+            assertThat(server.getMethod("getHost").invoke(instance)).isEqualTo("localhost")
+            assertThat(server.getMethod("port").invoke(instance)).isEqualTo(8080)
+            assertThat(server.getMethod("retries").invoke(instance)).isEqualTo(0.toByte())
+            assertThat(server.getMethod("capacity").invoke(instance)).isEqualTo(5_000_000_000L)
+            assertThat(server.getMethod("_toString").invoke(instance)).isEqualTo("label \"quoted\"")
+            assertThat((server.getMethod("mode").invoke(instance) as Enum<*>).name).isEqualTo("DEV_MODE")
+            val updated = server.getMethod("withHost", String::class.java).invoke(instance, "example.test")
+            assertThat(server.getMethod("host").invoke(updated)).isEqualTo("example.test")
+            assertThat(server.getMethod("host").invoke(instance)).isEqualTo("localhost")
+            val base = loader.loadClass("foo.bar.Mod\$Base")
+            val child = loader.loadClass("foo.bar.Mod\$Child")
+            assertThat(base.isRecord).isFalse()
+            assertThat(child.superclass).isEqualTo(base)
+            val childInstance = child.getConstructor().newInstance()
+            assertThat(base.getMethod("getName").invoke(childInstance)).isEqualTo("base")
+            assertThat(loader.loadClass("foo.bar.Mod\$Mode").isEnum).isTrue()
+        }
+    }
+
+    private fun writeBuildFile(generateRecords: Boolean = false) {
         writeFile(
             "build.gradle",
             """
@@ -116,7 +174,11 @@ class JavaCodeGeneratorsTest : AbstractTest() {
             namedAnnotation = "javax.inject.Named"
             nonNullAnnotation = "javax.annotation.Nonnull"
             settingsModule = "pkl:settings"
-            generateSetters = true
+            generateRecords = $generateRecords
+            generateSetters = ${!generateRecords}
+            generateGetters = $generateRecords
+            generateEmptyConstructor = $generateRecords
+            generateJavadoc = $generateRecords
             setDefaultValues = true
             renames = [
               'org': 'foo.bar'
