@@ -24,7 +24,7 @@ class JavaCodeGeneratorsTest : AbstractTest() {
         val text = moduleFile.readText()
 
         // shading must not affect generated code
-        assertThat(text).doesNotContain("org.pkl.thirdparty")
+        assertThat(text).doesNotContain("org.pkl.thirdparty", "withName(")
 
         checkTextContains(
             text,
@@ -90,10 +90,13 @@ class JavaCodeGeneratorsTest : AbstractTest() {
     fun `compile generated records with defaults and class fallback`() {
         writeBuildFile(generateRecords = true)
         writeProjectFile()
+        writeFile("renderer.pkl", "class SecretField extends Annotation {}")
         writeFile(
             "mod.pkl",
             """
             module org.mod
+
+            import "renderer.pkl"
 
             enabled: Boolean = true
 
@@ -105,9 +108,16 @@ class JavaCodeGeneratorsTest : AbstractTest() {
               capacity: Int = 5000000000
               toString: String = "label \"quoted\""
               mode: Mode = "dev-mode"
+              @renderer.SecretField
+              token: String = "record-secret"
+              limits: Map<String, Int>?
             }
 
-            open class Base { name: String = "base" }
+            open class Base {
+              name: String = "base"
+              @renderer.SecretField
+              password: String = "class-secret"
+            }
             class Child extends Base {}
             typealias Mode = "dev-mode" | "prod"
             """,
@@ -122,7 +132,7 @@ class JavaCodeGeneratorsTest : AbstractTest() {
             assertThat(module.isRecord).isTrue()
             assertThat(server.isRecord).isTrue()
             assertThat(server.recordComponents.map { it.name })
-                .containsExactly("host", "port", "retries", "capacity", "_toString", "mode")
+                .containsExactly("host", "port", "retries", "capacity", "_toString", "mode", "token", "limits")
             val instance = server.getConstructor().newInstance()
             assertThat(server.getMethod("getHost").invoke(instance)).isEqualTo("localhost")
             assertThat(server.getMethod("port").invoke(instance)).isEqualTo(8080)
@@ -130,20 +140,43 @@ class JavaCodeGeneratorsTest : AbstractTest() {
             assertThat(server.getMethod("capacity").invoke(instance)).isEqualTo(5_000_000_000L)
             assertThat(server.getMethod("_toString").invoke(instance)).isEqualTo("label \"quoted\"")
             assertThat((server.getMethod("mode").invoke(instance) as Enum<*>).name).isEqualTo("DEV_MODE")
-            val updated = server.getMethod("withHost", String::class.java).invoke(instance, "example.test")
-            assertThat(server.getMethod("host").invoke(updated)).isEqualTo("example.test")
-            assertThat(server.getMethod("host").invoke(instance)).isEqualTo("localhost")
+            assertThat(server.getMethod("token").invoke(instance)).isEqualTo("record-secret")
+            assertThat(instance.toString())
+                .contains("host = localhost", "token = [REDACTED]")
+                .doesNotContain("record-secret")
+            assertThat(server.methods.map { it.name }).doesNotContain("setHost", "withHost")
             val base = loader.loadClass("foo.bar.Mod\$Base")
             val child = loader.loadClass("foo.bar.Mod\$Child")
             assertThat(base.isRecord).isFalse()
             assertThat(child.superclass).isEqualTo(base)
             val childInstance = child.getConstructor().newInstance()
             assertThat(base.getMethod("getName").invoke(childInstance)).isEqualTo("base")
+            base.getMethod("setName", String::class.java).invoke(childInstance, "changed")
+            assertThat(childInstance.toString()).contains("changed", "[REDACTED]").doesNotContain("class-secret")
+            assertThat(child.methods.map { it.name }).doesNotContain("withName")
             assertThat(loader.loadClass("foo.bar.Mod\$Mode").isEnum).isTrue()
         }
     }
 
-    private fun writeBuildFile(generateRecords: Boolean = false) {
+    @Test
+    fun `generate with methods when enabled`() {
+        writeBuildFile(generateRecords = true, generateWithMethods = true)
+        writeProjectFile()
+        writeFile("mod.pkl", "module org.mod\nclass Server { host: String = \"localhost\" }")
+
+        runTask("compileJava")
+
+        val classes = testProjectDir.resolve("build/classes/java/main")
+        URLClassLoader(arrayOf(classes.toUri().toURL())).use { loader ->
+            val server = loader.loadClass("foo.bar.Mod\$Server")
+            val instance = server.getConstructor().newInstance()
+            val updated = server.getMethod("withHost", String::class.java).invoke(instance, "example.test")
+            assertThat(server.getMethod("host").invoke(updated)).isEqualTo("example.test")
+            assertThat(server.getMethod("host").invoke(instance)).isEqualTo("localhost")
+        }
+    }
+
+    private fun writeBuildFile(generateRecords: Boolean = false, generateWithMethods: Boolean = false) {
         writeFile(
             "build.gradle",
             """
@@ -175,6 +208,7 @@ class JavaCodeGeneratorsTest : AbstractTest() {
             nonNullAnnotation = "javax.annotation.Nonnull"
             settingsModule = "pkl:settings"
             generateRecords = $generateRecords
+            ${if (generateWithMethods) "generateWithMethods = true" else ""}
             generateSetters = ${!generateRecords}
             generateGetters = $generateRecords
             generateEmptyConstructor = $generateRecords

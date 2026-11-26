@@ -16,6 +16,9 @@ abstract class JavaCodeGenSpec
     val generateRecords: Property<Boolean> =
         objects.property(Boolean::class.java).convention(false)
 
+    val generateWithMethods: Property<Boolean> =
+        objects.property(Boolean::class.java).convention(false)
+
     val generateGetters: Property<Boolean> =
         objects.property(Boolean::class.java).convention(false)
 

@@ -142,10 +142,6 @@ class JavaCodeGenerator(
                 )
             }
 
-            if (codegenOptions.generateRecords && codegenOptions.generateSetters) {
-                throw JavaCodeGeneratorException("generateRecords cannot be combined with generateSetters.")
-            }
-
             val pModuleClass = schema.moduleClass
             val moduleClass = generateTypeSpec(pModuleClass, schema)
 
@@ -192,6 +188,7 @@ class JavaCodeGenerator(
                 ?: mapOf()
         val isRecord = codegenOptions.generateRecords && superclass == null && !pClass.isOpen && !pClass.isAbstract &&
             (!isModuleClass || pClass.properties.values.any { !it.isHidden })
+        val generateSetters = !isRecord && (codegenOptions.generateSetters || codegenOptions.generateRecords)
         val additionalReservedNames = when {
             !isRecord -> emptySet()
             codegenOptions.implementSerializable -> recordReservedNames + "serialVersionUID"
@@ -341,13 +338,18 @@ class JavaCodeGenerator(
 
             var builderSize = 50
             val appendBuilder = CodeBlock.builder()
-            for (propertyName in allProperties.keys) {
+            val secretProperties = generateSequence(pClass) { it.superclass }
+                .flatMap { it.properties.values.asSequence() }
+                .filter { property -> property.annotations.any(::isSecretField) }
+                .map { it.simpleName }
+                .toSet()
+            for ((propertyName, property) in allProperties) {
                 builderSize += 50
-                appendBuilder.addStatement(
-                    "appendProperty(builder, \$S, this.\$N)",
-                    propertyName,
-                    propertyName,
-                )
+                if (property.simpleName in secretProperties) {
+                    appendBuilder.addStatement("appendProperty(builder, \$S, \$S)", propertyName, "[REDACTED]")
+                } else {
+                    appendBuilder.addStatement("appendProperty(builder, \$S, this.\$N)", propertyName, propertyName)
+                }
             }
 
             builder
@@ -420,7 +422,7 @@ class JavaCodeGenerator(
                 builder.addModifiers(Modifier.PUBLIC)
             }
 
-            if (!codegenOptions.generateSetters) {
+            if (!generateSetters) {
                 builder.addModifiers(Modifier.FINAL)
             }
 
@@ -523,7 +525,7 @@ class JavaCodeGenerator(
                 { methodBuilder.addJavadoc(it) },
             )
 
-            if (!codegenOptions.generateSetters) {
+            if (!generateSetters) {
                 val codeBuilder = CodeBlock.builder()
                 codeBuilder.add("return new \$T(", javaPoetClassName)
                 var firstProperty = true
@@ -601,9 +603,12 @@ class JavaCodeGenerator(
                     }
                     builder.addMethod(generateGetter(name, property, isOverridden = false))
                 }
-                builder.addMethod(generateWithMethod(name, property))
+                if (codegenOptions.generateWithMethods) {
+                    builder.addMethod(generateWithMethod(name, property))
+                }
             }
             builder.recordConstructor(header.build())
+            builder.addMethod(generateToStringMethod())
         }
 
         @Suppress("DuplicatedCode")
@@ -693,12 +698,12 @@ class JavaCodeGenerator(
                         val isOverridden = name in superProperties
                         builder.addMethod(generateGetter(name, property, isOverridden))
                     }
-                    if (codegenOptions.generateSetters) {
+                    if (generateSetters) {
                         val isOverridden = name in superProperties
                         builder.addMethod(generateSetter(name, property, isOverridden))
                     }
                 }
-                if (isInstantiable) {
+                if (isInstantiable && codegenOptions.generateWithMethods) {
                     builder.addMethod(generateWithMethod(name, property))
                 }
             }
@@ -789,7 +794,7 @@ class JavaCodeGenerator(
             .addParameter(Object::class.java, "value")
             .addStatement("builder.append(\"\\n  \").append(name).append(\" = \")")
             .addStatement(
-                "\$T lines = \$T.toString(value).split(\"\\n\")",
+                "\$T lines = \$T.toString(value).split(\"\\n\", -1)",
                 ArrayTypeName.of(String::class.java),
                 Objects::class.java,
             )
@@ -1008,6 +1013,11 @@ class JavaCodeGenerator(
                 key
             }
         }
+    }
+
+    private fun isSecretField(annotation: PObject): Boolean {
+        val classInfo = annotation.classInfo
+        return classInfo.simpleName == "SecretField"
     }
 
     private fun isAnnotation(pClass: PClass): Boolean {

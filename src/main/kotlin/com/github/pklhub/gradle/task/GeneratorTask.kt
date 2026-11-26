@@ -38,6 +38,10 @@ open class GeneratorTask @Inject constructor(
     open fun getJavaRecordModes(): Map<String, Boolean> =
         extension.javaCodeGenerators.associate { it.name to it.generateRecords.get() }
 
+    @Input
+    open fun getJavaWithMethodModes(): Map<String, Boolean> =
+        extension.javaCodeGenerators.associate { it.name to it.generateWithMethods.get() }
+
     @InputFiles
     open fun getInputFiles(): List<File> {
         return this.extension.javaCodeGenerators.flatMap { spec ->

@@ -78,13 +78,16 @@ pklhub {
 
 Records require Java 16 or newer. Final Pkl classes and modules with properties can generate records when they have no custom superclass. Open and abstract types and types with a custom superclass continue to generate classes. Enum generation is unchanged.
 
-Records have component accessors such as `port()`. Set `generateGetters = true` to also generate JavaBean getters. Leave `generateSetters` disabled. To add a no-argument constructor, set `generateEmptyConstructor = true`. With `setDefaultValues = true`, that constructor uses Pkl defaults where available and Java defaults for the remaining components.
+Records have component accessors such as `port()`. Set `generateGetters = true` to also generate JavaBean getters. When record mode is enabled, generated classes have setters and records stay immutable. To add a no-argument constructor, set `generateEmptyConstructor = true`. With `setDefaultValues = true`, that constructor uses Pkl defaults where available and Java defaults for the remaining components.
+
+    Generated Java `toString()` methods replace values marked with `@renderer.SecretField` with `[REDACTED]`.
 
 ### Configuration Options
 
 - **`sourceModules`:** List of PKL files to generate Java code from.
 - **`generateSetters`:** Generate setters in target class and make it mutable
-- **`generateGetters`:** Generate getters in target class
+- **`generateGetters`:** Generate JavaBean getters.
+- **`generateWithMethods`:** Generate `withX(...)` methods. Defaults to `false`.
 - **`generateEmptyConstructor`:** Generate empty constructor
 - **`generateJavadoc`:** Generate java doc
 - **`durationClass`:** Default: java.time.Duration
