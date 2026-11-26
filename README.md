@@ -12,17 +12,13 @@
 
 ## Installation
 
-The Maven artifact is `com.github.pklhub:pkl-gradle:<version>`. To use it, add the GitHub Packages repository and map the plugin ID to that artifact in `settings.gradle`.
+The Maven artifact is `com.github.pklhub:pkl-gradle:<version>`. Add the public Maven repository in `settings.gradle`.
 
 ```groovy
 pluginManagement {
     repositories {
         maven {
-            url = uri("https://maven.pkg.github.com/pklhub/pkl-gradle")
-            credentials {
-                username = providers.environmentVariable("GITHUB_ACTOR").orNull
-                password = providers.environmentVariable("GITHUB_TOKEN").orNull
-            }
+            url = uri("https://raw.githubusercontent.com/pklhub/pkl-gradle/maven-releases")
             content {
                 includeGroup("com.github.pklhub")
             }
@@ -30,17 +26,10 @@ pluginManagement {
         gradlePluginPortal()
         mavenCentral()
     }
-    resolutionStrategy {
-        eachPlugin {
-            if (requested.id.id == "com.github.pklhub") {
-                useModule("com.github.pklhub:pkl-gradle:${requested.version}")
-            }
-        }
-    }
 }
 ```
 
-Set `GITHUB_ACTOR` to your GitHub username and `GITHUB_TOKEN` to a classic personal access token with `read:packages` for local use. Then apply a published version in `build.gradle`.
+Apply a published version in `build.gradle`.
 
 ```groovy
 plugins {
@@ -48,7 +37,7 @@ plugins {
 }
 ```
 
-Pushing a tag such as `v0.6.0` publishes that version to GitHub Packages.
+No registry credentials are required. A version tag such as `v0.6.0` publishes the implementation artifact and Gradle plugin marker to the `maven-releases` branch.
 
 ## Configuration
 

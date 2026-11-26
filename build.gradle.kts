@@ -68,12 +68,10 @@ repositories {
 publishing {
     repositories {
         mavenLocal()
-        maven {
-            name = "GitHubPackages"
-            url = uri("https://maven.pkg.github.com/pklhub/pkl-gradle")
-            credentials {
-                username = providers.environmentVariable("GITHUB_ACTOR").orNull
-                password = providers.environmentVariable("GITHUB_TOKEN").orNull
+        providers.gradleProperty("publicMavenDirectory").orNull?.let { directory ->
+            maven {
+                name = "PublicMaven"
+                url = uri(directory)
             }
         }
     }

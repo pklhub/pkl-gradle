@@ -6,8 +6,7 @@ on:
       - 'v*'
 
 permissions:
-  contents: read
-  packages: write
+  contents: write
 
 jobs:
   publish:
@@ -21,7 +20,33 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
       - name: Test
         run: ./gradlew test
-      - name: Publish Maven artifact
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-        run: ./gradlew -Pversion="${GITHUB_REF_NAME#v}" publishPluginMavenPublicationToGitHubPackagesRepository
+      - name: Publish to the public Maven repository
+        shell: bash
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          branch="refs/heads/maven-releases"
+          repository="$RUNNER_TEMP/maven-releases"
+
+          existing_branch=$(git ls-remote --heads origin "$branch")
+          if [[ -n "$existing_branch" ]]; then
+            git fetch origin "$branch"
+            git worktree add --detach "$repository" FETCH_HEAD
+          else
+            git init "$repository"
+          fi
+
+          artifact="$repository/com/github/pklhub/pkl-gradle/$version/pkl-gradle-$version.jar"
+          if [[ -f "$artifact" ]]; then
+            echo "Version $version is already published."
+            exit 0
+          fi
+
+          ./gradlew -Pversion="$version" -PpublicMavenDirectory="$repository" \
+            publishAllPublicationsToPublicMavenRepository
+          git -C "$repository" add .
+          git -C "$repository" \
+            -c user.name='github-actions[bot]' \
+            -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
+            commit -m "Publish pkl-gradle $version"
+          git fetch "$repository" HEAD
+          git push origin "FETCH_HEAD:$branch"
