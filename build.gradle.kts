@@ -8,7 +8,7 @@ plugins {
     `java-library`
 }
 
-group = "io.hpkl.gradle"
+group = "com.github.pklhub"
 
 val pklVersion = "0.27.1"
 val junitVersion = "5.11.3"
@@ -37,15 +37,15 @@ dependencies {
 }
 
 gradlePlugin {
-    website = "https://github.com/hpklio"
-    vcsUrl = "https://github.com/hpklio/hpkl-gradle"
+    website = "https://github.com/pklhub/pkl-gradle"
+    vcsUrl = "https://github.com/pklhub/pkl-gradle"
     plugins {
-        create("hpkl") {
-            id = "io.hpkl"
-            implementationClass = "io.hpkl.gradle.PklPojoGradlePlugin"
-            displayName = "HPKL Gradle plugin"
-            description = "Gradle plugin for hpkl to generate java pojos"
-            tags = listOf("pkl", "generator", "hpkl", "java")
+        create("pkl") {
+            id = "com.github.pklhub"
+            implementationClass = "com.github.pklhub.gradle.PklPojoGradlePlugin"
+            displayName = "Pkl Gradle plugin"
+            description = "Generate Java and Kotlin classes from Pkl modules"
+            tags = listOf("pkl", "generator", "java", "kotlin")
         }
     }
 }
@@ -68,6 +68,14 @@ repositories {
 publishing {
     repositories {
         mavenLocal()
+        maven {
+            name = "GitHubPackages"
+            url = uri("https://maven.pkg.github.com/pklhub/pkl-gradle")
+            credentials {
+                username = providers.environmentVariable("GITHUB_ACTOR").orNull
+                password = providers.environmentVariable("GITHUB_TOKEN").orNull
+            }
+        }
     }
 }
 

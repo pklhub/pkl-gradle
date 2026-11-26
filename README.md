@@ -1,6 +1,6 @@
-# hpkl-gradle
+# pkl-gradle
 
-`hpkl-gradle` is a Gradle plugin that enables the generation of Java POJOs based on [PKL](https://pkl-lang.org) files. The plugin offers advanced features like generating mutable POJOs and adding Spring configuration properties annotations with custom prefix values.
+`pkl-gradle` is a Gradle plugin that enables the generation of Java POJOs based on [PKL](https://pkl-lang.org) files. The plugin offers advanced features like generating mutable POJOs and adding Spring configuration properties annotations with custom prefix values.
 
 ## Features
 
@@ -12,20 +12,50 @@
 
 ## Installation
 
-Add the plugin to your `build.gradle` file:
+The Maven artifact is `com.github.pklhub:pkl-gradle:<version>`. To use it, add the GitHub Packages repository and map the plugin ID to that artifact in `settings.gradle`.
 
-```gradle
-plugins {    
-    id "io.hpkl"
+```groovy
+pluginManagement {
+    repositories {
+        maven {
+            url = uri("https://maven.pkg.github.com/pklhub/pkl-gradle")
+            credentials {
+                username = providers.environmentVariable("GITHUB_ACTOR").orNull
+                password = providers.environmentVariable("GITHUB_TOKEN").orNull
+            }
+            content {
+                includeGroup("com.github.pklhub")
+            }
+        }
+        gradlePluginPortal()
+        mavenCentral()
+    }
+    resolutionStrategy {
+        eachPlugin {
+            if (requested.id.id == "com.github.pklhub") {
+                useModule("com.github.pklhub:pkl-gradle:${requested.version}")
+            }
+        }
+    }
 }
 ```
 
+Set `GITHUB_ACTOR` to your GitHub username and `GITHUB_TOKEN` to a classic personal access token with `read:packages` for local use. Then apply a published version in `build.gradle`.
+
+```groovy
+plugins {
+    id "com.github.pklhub" version "<version>"
+}
+```
+
+Pushing a tag such as `v0.6.0` publishes that version to GitHub Packages.
+
 ## Configuration
 
-You can configure the plugin in your `build.gradle` file using the `hpkl` block. Below is an example configuration:
+You can configure the plugin in your `build.gradle` file using the `pklhub` block. Below is an example configuration:
 
 ```gradle
-hpkl {
+pklhub {
     javaCodeGenerators {
         configClasses {
             sourceModules = ["mod.pkl"]
@@ -66,7 +96,7 @@ Here is an example `build.gradle` configuration:
 ```gradle
 plugins {
     id "java"
-    id "io.hpkl"        
+    id "com.github.pklhub" version "<version>"
 }
 
 repositories {
@@ -78,7 +108,7 @@ dependencies {
     implementation "com.google.code.findbugs:jsr305:3.0.2"
 }
 
-hpkl {
+pklhub {
     javaCodeGenerators {
         configClasses {
             sourceModules = ["mod.pkl"]
@@ -95,12 +125,12 @@ hpkl {
 
 ## Contributing
 
-Contributions are welcome! Please open an issue or submit a pull request on the [GitHub repository](https://github.com/hpklio/hpkl-gradle).
+Contributions are welcome! Please open an issue or submit a pull request on the [GitHub repository](https://github.com/pklhub/pkl-gradle).
 
 ## Support
 
-For questions or support, please file an issue on the [GitHub repository](https://github.com/your-repo/hpkl-gradle).
+For questions or support, please file an issue on the [GitHub repository](https://github.com/pklhub/pkl-gradle/issues).
 
 ---
 
-Thank you for using `hpkl-gradle`!
+Thank you for using `pkl-gradle`!
