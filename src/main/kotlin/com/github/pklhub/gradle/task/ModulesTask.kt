@@ -121,8 +121,8 @@ abstract class ModulesTask(
                         emptyList(),
                         null,
                         listOf(),
-                        emptyMap(),
-                        emptyMap(),
+                        externalModuleReaders = emptyMap(),
+                        externalResourceReaders = emptyMap(),
                     )
             }
 

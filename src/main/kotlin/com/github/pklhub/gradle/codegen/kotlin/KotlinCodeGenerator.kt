@@ -37,7 +37,6 @@ import org.pkl.core.Version
 import org.pkl.core.util.CodeGeneratorUtils
 import org.pkl.core.util.IoUtils
 import org.slf4j.Logger
-import java.net.URI
 import java.util.Objects
 
 class KotlinCodeGeneratorException(message: String) : RuntimeException(message)
@@ -65,7 +64,7 @@ class KotlinCodeGenerator(
         private val PMODULE = PModule::class.asClassName()
         private val PCLASS = PClass::class.asClassName()
         private val REGEX = Regex::class.asClassName()
-        private val URI = URI::class.asClassName()
+        private val URI = java.net.URI::class.asClassName()
         private val VERSION = Version::class.asClassName()
     }
 

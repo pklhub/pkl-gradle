@@ -24,8 +24,8 @@ class PklPojoGradlePlugin : Plugin<Project> {
             extension,
         )
 
-        task.configure {
-            dependsOn(resolveTask)
+        task.configure { generator ->
+            generator.dependsOn(resolveTask)
         }
 
         project.tasks.findByName("compileJava")?.dependsOn(task.name)

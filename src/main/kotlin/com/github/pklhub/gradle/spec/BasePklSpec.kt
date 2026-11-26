@@ -40,9 +40,11 @@ abstract class BasePklSpec(val name: String, val project: Project, val objects: 
             project.rootProject.layout.projectDirectory,
         )
 
-    val moduleCacheDir: DirectoryProperty = objects.directoryProperty().convention(
-        project.layout.projectDirectory.dir(IoUtils.getDefaultModuleCacheDir().toFile().absolutePath),
-    )
+    val moduleCacheDir: DirectoryProperty = objects.directoryProperty().apply {
+        IoUtils.getSystemModuleCacheDir()?.let { cacheDir ->
+            convention(project.layout.projectDirectory.dir(cacheDir.toString()))
+        }
+    }
 
     val color: Property<Boolean> =
         objects.property(Boolean::class.java).convention(false)

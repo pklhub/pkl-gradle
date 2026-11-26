@@ -29,6 +29,8 @@ pluginManagement {
 }
 ```
 
+The repository base URL returns HTTP 404 when opened directly. Gradle requests individual Maven files under that URL. To browse the files, open the [maven-releases branch](https://github.com/pklhub/pkl-gradle/tree/maven-releases).
+
 Apply a published version in `build.gradle`.
 
 ```groovy

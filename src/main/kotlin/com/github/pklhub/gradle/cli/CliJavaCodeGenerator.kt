@@ -4,8 +4,8 @@ import com.github.pklhub.gradle.codegen.java.JavaCodeGenerator
 import com.github.pklhub.gradle.codegen.java.JavaCodeGeneratorException
 import org.pkl.commons.cli.CliCommand
 import org.pkl.commons.cli.CliException
-import org.pkl.commons.createParentDirectories
-import org.pkl.commons.writeString
+import kotlin.io.path.createParentDirectories
+import kotlin.io.path.writeText
 import org.pkl.core.Closeables
 import org.pkl.core.ModuleSource
 import org.slf4j.Logger
@@ -29,7 +29,7 @@ class CliJavaCodeGenerator(
                         for ((fileName, fileContents) in codeGenerator.output) {
                             val outputFile = options.outputDir.resolve(fileName)
                             try {
-                                outputFile.createParentDirectories().writeString(fileContents)
+                                outputFile.createParentDirectories().writeText(fileContents)
                             } catch (e: IOException) {
                                 throw CliException("I/O error writing file `$outputFile`.\nCause: ${e.message}")
                             }

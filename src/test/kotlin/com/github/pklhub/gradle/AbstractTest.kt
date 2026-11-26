@@ -5,9 +5,9 @@ import org.gradle.testkit.runner.BuildResult
 import org.gradle.testkit.runner.GradleRunner
 import org.gradle.testkit.runner.UnexpectedBuildFailure
 import org.junit.jupiter.api.io.TempDir
-import org.pkl.commons.createParentDirectories
-import org.pkl.commons.readString
-import org.pkl.commons.writeString
+import kotlin.io.path.createParentDirectories
+import kotlin.io.path.readText
+import kotlin.io.path.writeText
 import java.net.URI
 import java.nio.file.Path
 
@@ -44,13 +44,13 @@ abstract class AbstractTest {
     protected fun writeFile(fileName: String, contents: String): Path {
         return testProjectDir
             .resolve(fileName)
-            .apply { createParentDirectories() }
-            .writeString(contents.trimIndent())
+            .createParentDirectories()
+            .also { it.writeText(contents.trimIndent()) }
     }
 
     protected fun checkFileContents(file: Path, contents: String) {
         assertThat(file).exists()
-        assertThat(file.readString().trim()).isEqualTo(contents.trim())
+        assertThat(file.readText().trim()).isEqualTo(contents.trim())
     }
 
     protected fun checkTextContains(text: String, vararg contents: String) {

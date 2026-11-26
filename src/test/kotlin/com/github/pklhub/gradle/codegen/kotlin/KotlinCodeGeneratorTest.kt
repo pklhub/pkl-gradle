@@ -492,9 +492,9 @@ class KotlinCodeGeneratorTest {
 
         assertAll(
             "generated enum constants have correct names",
-            kotlinClass.declaredFields.zip(cases) { field, (_, kotlinName) ->
+            kotlinClass.enumConstants.zip(cases) { enumConstant, (_, kotlinName) ->
                 {
-                    assertThat(field.name).isEqualTo(kotlinName)
+                    assertThat((enumConstant as Enum<*>).name).isEqualTo(kotlinName)
                     Unit
                 }
             },

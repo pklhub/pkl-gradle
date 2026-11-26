@@ -1,11 +1,11 @@
 package com.github.pklhub.gradle.codegen.kotlin
 
-import org.pkl.commons.createParentDirectories
-import org.pkl.commons.writeString
+import kotlin.io.path.createParentDirectories
+import kotlin.io.path.writeText
 import java.nio.file.Path
 
 data class PklModule(val name: String, val content: String) {
     fun writeToDisk(path: Path): Path {
-        return path.createParentDirectories().writeString(content)
+        return path.createParentDirectories().also { it.writeText(content) }
     }
 }

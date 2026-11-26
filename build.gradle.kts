@@ -1,16 +1,15 @@
 import org.gradle.api.tasks.testing.logging.TestExceptionFormat
 
 plugins {
-    kotlin("jvm") version "1.9.22"
+    kotlin("jvm") version "2.2.21"
     id("com.gradle.plugin-publish") version "1.2.1"
     id("com.diffplug.spotless") version "6.13.0"
-    `kotlin-dsl`
     `java-library`
 }
 
 group = "com.github.pklhub"
 
-val pklVersion = "0.27.1"
+val pklVersion = "0.33.1"
 val junitVersion = "5.11.3"
 
 dependencies {
@@ -19,7 +18,7 @@ dependencies {
     implementation("org.pkl-lang:pkl-commons:${pklVersion}")
     implementation("com.palantir.javapoet:javapoet:0.6.0")
     implementation("com.squareup:kotlinpoet:1.6.0")
-    implementation("org.jetbrains.kotlin:kotlin-reflect:1.7.10")
+    implementation(kotlin("reflect"))
 
     testApi("org.junit.jupiter:junit-jupiter-api:${junitVersion}")
     testApi("org.junit.jupiter:junit-jupiter-engine:${junitVersion}")
@@ -31,9 +30,8 @@ dependencies {
 
     testImplementation("org.assertj:assertj-core:3.26.3")
 
-    testImplementation("org.jetbrains.kotlin:kotlin-compiler-embeddable:1.7.10")
-    testRuntimeOnly("org.jetbrains.kotlin:kotlin-scripting-compiler-embeddable:1.7.10")
-    testRuntimeOnly("org.jetbrains.kotlin:kotlin-script-util:1.7.10")
+    testImplementation(kotlin("compiler-embeddable"))
+    testRuntimeOnly(kotlin("scripting-jsr223"))
 }
 
 gradlePlugin {
