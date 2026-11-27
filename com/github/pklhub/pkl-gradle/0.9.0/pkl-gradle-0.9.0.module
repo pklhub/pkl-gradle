@@ -1,0 +1,170 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "com.github.pklhub",
+    "module": "pkl-gradle",
+    "version": "0.9.0",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "8.8"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.environment": "standard-jvm",
+        "org.gradle.jvm.version": 17,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api",
+        "org.jetbrains.kotlin.platform.type": "jvm"
+      },
+      "dependencies": [
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-stdlib",
+          "version": {
+            "requires": "2.2.21"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "pkl-gradle-0.9.0.jar",
+          "url": "pkl-gradle-0.9.0.jar",
+          "size": 162537,
+          "sha512": "323f6d83a7a9c18777002caa9ff4f1de001b68cbc10111948f502063d51a6cc858c4599c368ce8f595909b45dfb4ea9166d857e11f02761a6beb641f27b21b9e",
+          "sha256": "393ec5bd10a5991422d35a32d73f69ff3e48de48d7d43696ebf7170bb12b99b9",
+          "sha1": "e93ff2c57307f604d4b1d51748382309df105a0e",
+          "md5": "54ebe0047c501fbc7404764c4a144d02"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.environment": "standard-jvm",
+        "org.gradle.jvm.version": 17,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime",
+        "org.jetbrains.kotlin.platform.type": "jvm"
+      },
+      "dependencies": [
+        {
+          "group": "org.pkl-lang",
+          "module": "pkl-core",
+          "version": {
+            "requires": "0.33.1"
+          }
+        },
+        {
+          "group": "org.pkl-lang",
+          "module": "pkl-commons-cli",
+          "version": {
+            "requires": "0.33.1"
+          }
+        },
+        {
+          "group": "org.pkl-lang",
+          "module": "pkl-commons",
+          "version": {
+            "requires": "0.33.1"
+          }
+        },
+        {
+          "group": "com.palantir.javapoet",
+          "module": "javapoet",
+          "version": {
+            "requires": "0.6.0"
+          }
+        },
+        {
+          "group": "com.squareup",
+          "module": "kotlinpoet",
+          "version": {
+            "requires": "1.6.0"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-reflect"
+        },
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-stdlib",
+          "version": {
+            "requires": "2.2.21"
+          }
+        }
+      ],
+      "dependencyConstraints": [
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-reflect",
+          "version": {
+            "requires": "2.2.21"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "pkl-gradle-0.9.0.jar",
+          "url": "pkl-gradle-0.9.0.jar",
+          "size": 162537,
+          "sha512": "323f6d83a7a9c18777002caa9ff4f1de001b68cbc10111948f502063d51a6cc858c4599c368ce8f595909b45dfb4ea9166d857e11f02761a6beb641f27b21b9e",
+          "sha256": "393ec5bd10a5991422d35a32d73f69ff3e48de48d7d43696ebf7170bb12b99b9",
+          "sha1": "e93ff2c57307f604d4b1d51748382309df105a0e",
+          "md5": "54ebe0047c501fbc7404764c4a144d02"
+        }
+      ]
+    },
+    {
+      "name": "javadocElements",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "javadoc",
+        "org.gradle.usage": "java-runtime"
+      },
+      "files": [
+        {
+          "name": "pkl-gradle-0.9.0-javadoc.jar",
+          "url": "pkl-gradle-0.9.0-javadoc.jar",
+          "size": 261,
+          "sha512": "58ef3b29d80e9d2bad5819e3ccddb02ca27fa930e8c6043ce65c43709369526ad8176b25a169a91df24f6293ab449ab416bef13e350b598d7396fe934805c743",
+          "sha256": "8a1faafd3962af73fee7df4100e8a72a49d9fbf69722a75c02baeab81a3e18be",
+          "sha1": "ad4c2347de3b498eea32a66edae897864ec8f046",
+          "md5": "b682fb8c6faa126e43c7eebf8dfad7d0"
+        }
+      ]
+    },
+    {
+      "name": "sourcesElements",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "sources",
+        "org.gradle.usage": "java-runtime"
+      },
+      "files": [
+        {
+          "name": "pkl-gradle-0.9.0-sources.jar",
+          "url": "pkl-gradle-0.9.0-sources.jar",
+          "size": 42064,
+          "sha512": "9560ee91a524d31995c13546afcc744615c750e0f0b1353cd6209f299eef409d1d4b3c55d09d9c7f0e0fe0d6b3e520e550d2d43fc5d15fb44e645bea42640135",
+          "sha256": "ff13112f2d6e862910b28a1f4552883ae92b84162959e21c071f1275ba2f2df1",
+          "sha1": "3a06597a199242bd9f1375749b0e1cebe2e552ce",
+          "md5": "9cc861926a50beb3dc7ea13d7bd8c043"
+        }
+      ]
+    }
+  ]
+}
